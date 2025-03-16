@@ -1,0 +1,16 @@
+ccxt
+numpy
+pandas
+tensorflow
+scikit-learn
+matplotlib
+seaborn
+requests
+tweepy
+textblob
+flask
+flask_cors
+pennylane
+scipy
+psutil
+python-dotenv
