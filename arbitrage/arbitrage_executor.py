@@ -5,7 +5,7 @@
 
 import time
 from core.exchange_connector import ExchangeConnector
-from core.ai_arbitrage_detector import AIArbitrageDetector
+from arbitrage.ai_arbitrage_detector import AIArbitrageDetector
 from config import ENABLE_ARBITRAGE, ARBITRAGE_MIN_PROFIT
 
 class ArbitrageExecutor:

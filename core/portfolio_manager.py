@@ -5,7 +5,8 @@
 
 import time
 from core.exchange_connector import ExchangeConnector
-from logger import Logger
+from custom_logging.logger import Logger
+
 from config import PAIR, ORDER_MINIMUM_VALUE
 
 class PortfolioManager:

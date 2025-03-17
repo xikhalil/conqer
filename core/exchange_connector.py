@@ -1,17 +1,11 @@
-# exchange_connector.py
-# ==================================================
-# 🔗 EXCHANGE CONNECTOR – HANDLES MEXC API CONNECTION 🔗
-# ==================================================
-
 import os
-import ccxt
+import requests
 import pandas as pd
 import time
 from dotenv import load_dotenv
-from utils.logger import Logger
+from custom_logging.logger import Logger
 
-
-# ✅ Load API keys securely from .env file
+# Load API keys securely from .env file
 load_dotenv()
 
 class ExchangeConnector:
@@ -20,131 +14,142 @@ class ExchangeConnector:
         Initializes connection to the MEXC exchange.
         """
         try:
-            self.exchange = ccxt.mexc({
-                'apiKey': os.getenv("MEXC_API_KEY"),
-                'secret': os.getenv("MEXC_API_SECRET"),
-                'enableRateLimit': True
-            })
+            self.api_key = os.getenv("MEXC_API_KEY")
+            self.api_secret = os.getenv("MEXC_API_SECRET")
+            self.base_url = "https://api.mexc.com/api/v3"  # ✅ FIXED BASE URL
+            
+            # Create a session for reusing the connection
+            self.session = requests.Session()
+            self.session.headers.update({'X-MEXC-APIKEY': self.api_key})
 
-            self.exchange.load_markets()
-            Logger.info("✅ Connected to MEXC successfully.")
-
+            Logger.info("✅ MEXC API Initialized Successfully.")
         except Exception as e:
-            Logger.error(f"❌ Exchange Connection Failed: {e}")
-            exit()  # Stop execution if connection fails
+            Logger.error(f"❌ MEXC API Initialization Failed: {e}")
+            exit()
 
     def fetch_market_data(self, pair="PI/USDT"):
         """
-        Fetch latest market data and add indicators.
-        Args:
-            pair (str): Trading pair (default: "PI/USDT").
-        Returns:
-            pd.DataFrame: Market data with indicators.
+        Fetch latest market data for the given pair.
         """
         try:
-            Logger.info(f"📡 Fetching market data for {pair}...")
-            ohlcv = self.exchange.fetch_ohlcv(pair, timeframe='1m', limit=200)
+            url = f"{self.base_url}/klines"  # ✅ FIXED ENDPOINT
+            params = {
+                'symbol': pair.replace("/", ""),  # ✅ Convert "PI/USDT" -> "PIUSDT"
+                'interval': '1m',
+                'limit': 200
+            }
 
-            if not ohlcv or len(ohlcv) == 0:
-                Logger.warning(f"⚠️ No OHLCV data received for {pair}. Retrying in 60 seconds...")
+            response = self.session.get(url, params=params)
+
+            if response.status_code == 429:
+                Logger.warning("⚠️ Rate limit hit. Retrying in 60 seconds...")
+                time.sleep(60)
+                return self.fetch_market_data(pair)  # Retry the request
+
+            # ✅ Log raw response for debugging
+            Logger.info(f"API Response: {response.text[:200]}")  # Log first 200 chars
+
+            # ✅ Detect if response is HTML instead of JSON
+            if "text/html" in response.headers.get("Content-Type", ""):
+                Logger.error(f"❌ Received HTML instead of JSON: {response.text[:200]}")
                 return None
 
-            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            data = response.json()
 
+            # ✅ Ensure the API response is a list (not a dict)
+            if not isinstance(data, list):
+                Logger.error(f"❌ Unexpected API response format: {type(data)}")
+                return None
+
+            # ✅ Convert list to DataFrame with correct columns
+            df = pd.DataFrame(data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'quote_asset_volume'])
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df.drop(columns=['close_time', 'quote_asset_volume'], inplace=True)  # Remove unnecessary columns
             df.dropna(inplace=True)
+
+            if df.empty:
+                Logger.warning(f"⚠️ No market data received for {pair}. Skipping cycle.")
+                return None
+
             Logger.info(f"✅ Market Data Loaded: {len(df)} candles.")
             return df
 
-        except ccxt.NetworkError as e:
-            Logger.error(f"🌐 Network Error fetching market data: {e}")
-        except ccxt.ExchangeError as e:
-            Logger.error(f"❌ Exchange API Error: {e}")
-        except ccxt.BadSymbol as e:
-            Logger.error(f"⚠️ Invalid Trading Pair: {pair}. Check if it exists on MEXC.")
+        except requests.exceptions.RequestException as e:
+            Logger.error(f"❌ Network error: {e}")
+            return None
         except Exception as e:
-            Logger.error(f"⚠️ Unexpected Error: {e}")
-
-        return None  # Ensure None is returned if there's an error
+            Logger.error(f"❌ Error fetching market data: {e}")
+            return None
 
     def fetch_balance(self):
         """
-        Fetch account balance from the exchange.
-        Returns:
-            dict: Available USDT and PI balance.
+        Fetch account balance from the MEXC API.
         """
         try:
-            balance = self.exchange.fetch_balance()
-            usdt_balance = balance['free'].get('USDT', 0)
-            pi_balance = balance['free'].get('PI', 0)
-            return {"USDT": usdt_balance, "PI": pi_balance}
+            url = f"{self.base_url}/account/api/v3/account"  # ✅ FIXED ENDPOINT
+            response = self.session.get(url)
+            data = response.json()
 
+            if not isinstance(data, dict):
+                Logger.error("❌ Unexpected response format for balance.")
+                return {"USDT": 0, "PI": 0}
+
+            if data.get("code") != 200:
+                Logger.error(f"❌ Error fetching balance: {data.get('msg')}")
+                return {"USDT": 0, "PI": 0}
+
+            balance = data.get('data', {})
+            return {"USDT": balance.get('USDT', 0), "PI": balance.get('PI', 0)}
+
+        except requests.exceptions.RequestException as e:
+            Logger.error(f"❌ Network error: {e}")
+            return {"USDT": 0, "PI": 0}
         except Exception as e:
             Logger.error(f"❌ Error fetching balance: {e}")
-            return {"USDT": 0, "PI": 0}  # ✅ Prevents crashes by returning default balance
+            return {"USDT": 0, "PI": 0}
 
     def place_order(self, pair, side, amount):
         """
         Places a market order (BUY or SELL).
-        Args:
-            pair (str): Trading pair (e.g., "PI/USDT").
-            side (str): "buy" or "sell".
-            amount (float): Order size.
-        Returns:
-            dict or None: Order details if successful, None if failed.
         """
-        try:
-            Logger.info(f"📈 Placing {side.upper()} order: {amount} {pair}...")
-            order = self.exchange.create_market_order(pair, side, amount)
-            Logger.info(f"✅ Order Executed: {order}")
-            return order
-
-        except Exception as e:
-            Logger.error(f"❌ Order Execution Failed: {e}")
+        if amount <= 0:
+            Logger.error(f"❌ Invalid order amount: {amount}")
             return None
 
-    def fetch_open_orders(self, pair="PI/USDT"):
-        """
-        Fetches all open orders for a trading pair.
-        Args:
-            pair (str): Trading pair.
-        Returns:
-            list: Open orders.
-        """
         try:
-            open_orders = self.exchange.fetch_open_orders(pair)
-            return open_orders if open_orders else []
+            url = f"{self.base_url}/order"
+            params = {
+                'symbol': pair.replace("/", ""),  # ✅ FIXED PAIR FORMAT
+                'side': side.upper(),  # ✅ ENSURE UPPERCASE
+                'orderType': 'MARKET',  # ✅ FIXED PARAMETER NAME
+                'quantity': amount,
+            }
 
+            response = self.session.post(url, params=params)
+            data = response.json()
+
+            if not isinstance(data, dict):
+                Logger.error("❌ Unexpected response format for order placement.")
+                return None
+
+            if data.get("code") != 200:
+                Logger.error(f"❌ Error placing order: {data.get('msg')}")
+                return None
+
+            Logger.info(f"✅ Order Executed: {data}")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            Logger.error(f"❌ Network error: {e}")
+            return None
         except Exception as e:
-            Logger.error(f"❌ Error fetching open orders: {e}")
-            return []
-
-    def cancel_order(self, order_id):
-        """
-        Cancels an open order.
-        Args:
-            order_id (str): ID of the order to cancel.
-        Returns:
-            dict or None: Cancelled order details or None if failed.
-        """
-        try:
-            Logger.info(f"🔄 Cancelling Order ID: {order_id}...")
-            order = self.exchange.cancel_order(order_id)
-            Logger.info(f"✅ Order Cancelled: {order}")
-            return order
-
-        except Exception as e:
-            Logger.error(f"❌ Error Cancelling Order: {e}")
+            Logger.error(f"❌ Error placing order: {e}")
             return None
 
 # 🚀 EXAMPLE USAGE
 if __name__ == "__main__":
     exchange = ExchangeConnector()
     print("💰 Balance:", exchange.fetch_balance())
-
     market_data = exchange.fetch_market_data()
     if market_data is not None:
         print(market_data.head())
-
-    # Test placing an order (SIMULATION MODE ONLY)
-    # exchange.place_order("PI/USDT", "buy", 1.0)

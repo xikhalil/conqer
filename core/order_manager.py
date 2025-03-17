@@ -6,7 +6,8 @@
 import time
 from core.exchange_connector import ExchangeConnector
 from config import ENABLE_SIMULATION_MODE, ORDER_MINIMUM_VALUE, STOP_LOSS_PERCENT, TAKE_PROFIT_PERCENT
-from utils.logger import Logger
+from custom_logging.logger import Logger
+
 
 class OrderManager:
     def __init__(self, exchange: ExchangeConnector):

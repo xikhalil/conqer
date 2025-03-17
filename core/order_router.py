@@ -6,7 +6,8 @@
 import time
 from core.exchange_connector import ExchangeConnector
 from core.risk_management import validate_trade
-from utils.logger import Logger
+from custom_logging.logger import Logger
+
 from config import MAX_SLIPPAGE, RETRY_ATTEMPTS, RETRY_DELAY
 
 class OrderRouter:

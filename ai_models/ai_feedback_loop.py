@@ -109,8 +109,12 @@ if __name__ == "__main__":
         {"trade_signal": "BUY", "market_data": {"close": [101, 103]}, "actual_outcome": 100},  # Incorrect
     ]
 
+    # Convert market data to DataFrame
     for trade in trade_data:
-        feedback.update_trade_feedback(trade["trade_signal"], pd.DataFrame(trade["market_data"]), trade["actual_outcome"])
+        trade["market_data"] = pd.DataFrame({'close': trade["market_data"]["close"]})
+
+    for trade in trade_data:
+        feedback.update_trade_feedback(trade["trade_signal"], trade["market_data"], trade["actual_outcome"])
 
     print("✅ AI Trade Accuracy:", feedback.calculate_trade_accuracy(), "%")
     feedback.check_and_retrain()

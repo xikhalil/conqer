@@ -5,7 +5,8 @@
 import pandas as pd
 import numpy as np
 import ta  # ✅ Technical Analysis Library
-from utils.logger import Logger
+from custom_logging.logger import Logger
+
 
 class DataPreprocessing:
     def __init__(self, df):

@@ -8,7 +8,7 @@ import tweepy
 from textblob import TextBlob
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from dotenv import load_dotenv
-from utils.logger import Logger
+from custom_logging.logger import Logger
 
 # Load API credentials securely
 load_dotenv()

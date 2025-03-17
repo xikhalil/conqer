@@ -4,7 +4,8 @@
 # ==================================================
 
 from config import STOP_LOSS_PERCENT, TAKE_PROFIT_PERCENT, RISK_PER_TRADE, ORDER_MINIMUM_VALUE
-from utils.logger import Logger
+from custom_logging.logger import Logger
+
 import pandas as pd
 
 def calculate_risk_levels(entry_price, trade_type):
@@ -76,10 +77,29 @@ def validate_trade(trade_signal, market_data, balance):
         "take_profit": risk_levels['take_profit']
     }
 
+def apply_risk_management(trade_signal, market_data, balance):
+    """
+    Wrapper function to apply risk management to a trade.
+    Args:
+        trade_signal (str): "BUY" or "SELL".
+        market_data (DataFrame): Market data for analysis.
+        balance (dict): Available balance in USDT & assets.
+    Returns:
+        dict: Trade validation and risk management result.
+    """
+    validation_result = validate_trade(trade_signal, market_data, balance)
+
+    if validation_result["valid"]:
+        Logger.info("✅ Trade passed risk management checks.")
+    else:
+        Logger.warning(f"❌ Trade failed: {validation_result['reason']}")
+
+    return validation_result
+
 # 🚀 EXAMPLE USAGE
 if __name__ == "__main__":
     sample_data = pd.DataFrame({"close": [50000, 50200, 50500, 50700, 51000]})
     balance = {"USDT": 1000, "PI": 2}
 
-    validation = validate_trade("BUY", sample_data, balance)
+    validation = apply_risk_management("BUY", sample_data, balance)
     print("📊 Trade Validation Result:", validation)

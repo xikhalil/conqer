@@ -5,7 +5,7 @@
 
 import numpy as np
 import pandas as pd
-from ai_models.rl_trading_agent import RLTradingAgent
+from reinforcement_learning.rl_trading_agent import RLTradingAgent
 from core.exchange_connector import ExchangeConnector
 from core.data_preprocessing import load_market_data
 from config import RL_TRAIN_EPISODES, RL_BATCH_SIZE

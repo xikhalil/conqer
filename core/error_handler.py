@@ -4,7 +4,8 @@
 
 import time
 import ccxt
-from utils.logger import Logger
+from custom_logging.logger import Logger
+
 
 class ErrorHandler:
     MAX_RETRIES = 3  # ✅ Limits retries to prevent infinite loops

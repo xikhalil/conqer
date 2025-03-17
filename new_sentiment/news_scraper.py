@@ -8,7 +8,8 @@ import requests
 import json
 import time
 from dotenv import load_dotenv
-from utils.logger import Logger
+from custom_logging.logger import Logger
+
 
 # Load API key securely
 load_dotenv()

@@ -5,7 +5,7 @@
 
 import time
 from core.exchange_connector import ExchangeConnector
-from core.market_correlation import MarketCorrelation
+from data.market_correlation import MarketCorrelation
 from core.risk_management import validate_trade
 from config import ENABLE_HEDGE_TRADING, PAIR
 

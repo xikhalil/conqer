@@ -5,7 +5,8 @@
 
 from textblob import TextBlob
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from utils.logger import Logger
+from custom_logging.logger import Logger
+
 
 class SentimentAnalyzer:
     def __init__(self):
