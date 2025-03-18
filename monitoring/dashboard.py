@@ -44,5 +44,7 @@ def get_status():
 
 # 🚀 START DASHBOARD
 if __name__ == "__main__":
+    import os
+    debug_mode = os.getenv("FLASK_DEBUG", "False").lower() in ("true", "1", "t")
     print("🚀 Dashboard Running at http://127.0.0.1:5000")
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=debug_mode, host="0.0.0.0", port=5000)
